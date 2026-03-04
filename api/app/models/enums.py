@@ -1,12 +1,17 @@
 from enum import Enum
 
+
 class DocumentStatus(str, Enum):
-    PENDING = "PENDING"
+    UPLOADED = "UPLOADED"
+    TG_PENDING = "TG_PENDING"
+
     TG_APPROVED = "TG_APPROVED"
     TG_REJECTED = "TG_REJECTED"
+
     SLACK_PENDING = "SLACK_PENDING"
     APPROVED = "APPROVED"
     SLACK_REJECTED = "SLACK_REJECTED"
+
 
 class DepositStatus(str, Enum):
     DEPOSIT_PENDING = "DEPOSIT_PENDING"

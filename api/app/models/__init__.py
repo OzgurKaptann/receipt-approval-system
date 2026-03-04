@@ -9,3 +9,5 @@ from app.models.customer import Customer  # noqa: F401
 from app.models.document import UploadedDocument  # noqa: F401
 from app.models.deposit import Deposit  # noqa: F401
 from app.models.audit_event import AuditEvent  # noqa: F401
+from app.models.audit_event import AuditEvent
+from app.models.document import UploadedDocument
