@@ -26,3 +26,6 @@ Thumbs.db
 
 # Generated artifacts
 openapi.json
+
+storage/
+.claude/

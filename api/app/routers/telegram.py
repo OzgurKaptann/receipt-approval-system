@@ -9,7 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.models.audit_event import AuditEvent
-from app.models.document import UploadedDocument  # ✅ doğru dosya
+from app.models.document import UploadedDocument
+from app.models.enums import DocumentStatus
+from app.services.workflow import on_telegram_approved
 
 
 router = APIRouter(prefix="/telegram", tags=["telegram"])
@@ -35,7 +37,7 @@ class TgUpdate(BaseModel):
 @router.post("/webhook")
 def telegram_webhook(payload: TgUpdate, db: Session = Depends(get_db)):
     """
-    Sprint-1: Telegram callback receiver (simülasyon).
+    Telegram callback receiver (simülasyon).
     callback_query.data format:
       - approve:<public_key>
       - reject:<public_key>
@@ -61,17 +63,27 @@ def telegram_webhook(payload: TgUpdate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Document not found")
 
     if action == "approve":
-        doc.status = "TG_APPROVED"
+        # Do not override Slack terminal states on repeated callbacks.
+        if doc.status not in (
+            DocumentStatus.SLACK_PENDING.value,
+            DocumentStatus.SLACK_APPROVED.value,
+            DocumentStatus.SLACK_REJECTED.value,
+        ):
+            doc.status = DocumentStatus.TG_APPROVED.value
         event_type = "TG_APPROVED"
     elif action == "reject":
-        doc.status = "TG_REJECTED"
+        doc.status = DocumentStatus.TG_REJECTED.value
         event_type = "TG_REJECTED"
     else:
         raise HTTPException(status_code=400, detail="Unknown action")
 
     actor = "unknown"
     if cq.from_:
-        actor = cq.from_.username or (str(cq.from_.id) if cq.from_.id is not None else actor)
+        # Prefer username, fall back to numeric id when provided.
+        if cq.from_.username:
+            actor = cq.from_.username
+        elif cq.from_.id is not None:
+            actor = str(cq.from_.id)
 
     db.add(
         AuditEvent(
@@ -84,4 +96,10 @@ def telegram_webhook(payload: TgUpdate, db: Session = Depends(get_db)):
     )
 
     db.commit()
+
+    if action == "approve":
+        on_telegram_approved(document_id=doc.id, db=db)
+        # Reload the latest status after workflow side-effects (e.g. SLACK_PENDING).
+        db.refresh(doc)
+
     return {"ok": True, "status": doc.status, "public_key": public_key}

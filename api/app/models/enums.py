@@ -9,8 +9,10 @@ class DocumentStatus(str, Enum):
     TG_REJECTED = "TG_REJECTED"
 
     SLACK_PENDING = "SLACK_PENDING"
-    APPROVED = "APPROVED"
+    SLACK_APPROVED = "SLACK_APPROVED"
     SLACK_REJECTED = "SLACK_REJECTED"
+
+    APPROVED = "APPROVED"
 
 
 class DepositStatus(str, Enum):
