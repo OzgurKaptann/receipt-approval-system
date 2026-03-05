@@ -1,128 +1,206 @@
 # Receipt Approval System
 
-## 🇬🇧 English
+![FastAPI](https://img.shields.io/badge/FastAPI-backend-green)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-database-blue)
+![Docker](https://img.shields.io/badge/Docker-containerized-blue)
+![Workflow](https://img.shields.io/badge/Workflow-Telegram→Slack→Deposit-orange)
 
-### Overview
+A **Dockerized backoffice payment workflow system** that automates the approval and processing of bank transfer receipts.
 
-Receipt Approval System is a backend service designed to process bank transfer receipts through a controlled approval workflow.
-
-The system allows uploaded payment receipts to be parsed, validated, and approved through a Telegram-based approval mechanism before further financial processing.
-
-This project demonstrates a **production-style backend architecture** including authentication, database migrations, external API integration, and audit logging.
-
----
-
-### System Workflow
-
-Receipt Upload
-→ OCR Parsing
-→ Telegram Approval Request
-→ Telegram Approval Webhook
-→ Status Update
-→ Audit Logging
+This project simulates how **financial operations teams validate payment receipts before creating deposit records** in trading or CRM systems.
 
 ---
 
-### Features
+# System Workflow
 
-* JWT Authentication
-* Customer Management
-* Receipt / Document Upload
-* OCR Parsing (mock implementation)
-* Telegram Approval Integration
-* Webhook Callback Handling
-* Full Audit Event Tracking
-* Dockerized Development Environment
+```mermaid
+flowchart TD
 
----
+A[Document Upload]
+B[OCR / Data Parsing]
+C[Telegram Approval]
+D[Slack Approval]
+E[Deposit Creation]
+F[Audit Trail]
 
-### Architecture
+A --> B
+B --> C
+C --> D
+D --> E
+E --> F
+```
 
-Backend Framework: **FastAPI**
-Database: **PostgreSQL**
-ORM: **SQLAlchemy**
-Migration Tool: **Alembic**
-Containerization: **Docker & Docker Compose**
-
----
-
-### API Endpoints
-
-Authentication
-
-* `POST /auth/register`
-* `POST /auth/login`
-
-Customers
-
-* `POST /customers`
-* `GET /customers`
-
-Documents
-
-* `POST /documents/upload`
-
-Telegram Integration
-
-* `POST /telegram/webhook`
-
-System
-
-* `GET /health`
+The workflow ensures that **every deposit is validated and approved before being processed**.
 
 ---
 
-### Database Tables
+# Architecture
 
-**uploaded_documents**
+```mermaid
+flowchart LR
 
-Stores uploaded receipt metadata and OCR extracted data.
+User --> API
 
-Fields include:
+API --> PostgreSQL
+API --> Telegram
+API --> Slack
 
-* sender_name
-* amount_try
-* transfer_date
-* tg_chat_id
-* tg_message_id
-* status
+Telegram --> API
+Slack --> API
 
----
-
-**audit_events**
-
-Stores a complete history of system actions for traceability.
-
-Examples:
-
-* DOCUMENT_UPLOADED
-* OCR_PARSED
-* TG_SENT
-* TG_APPROVED
-* TG_REJECTED
+API --> Deposit
+Deposit --> Audit
+```
 
 ---
 
-### Running the Project
+# Key Features
 
-Requirements
+### Multi-Stage Approval System
 
-* Docker
-* Docker Compose
+The system implements a **two-layer approval mechanism**:
 
-Start services:
+| Stage          | System        |
+| -------------- | ------------- |
+| First Approval | Telegram Bot  |
+| Final Approval | Slack Webhook |
+
+This architecture reduces operational risk in financial systems.
+
+---
+
+### Deposit Generation
+
+After Slack approval:
+
+* Deposit record is created
+* TRY amount is converted to USD
+* Deposit status becomes `DEPOSIT_PENDING`
+
+Example:
+
+```
+amount_try = 1250.50
+fx_rate = 0.032
+amount_usd = 40.02
+```
+
+---
+
+### FX Conversion Service
+
+Supports configurable exchange rate modes.
+
+Example configuration:
+
+```
+FX_MODE=manual
+FX_MANUAL_RATE=0.032
+```
+
+---
+
+### Audit Logging
+
+Every workflow action is recorded in `audit_events`.
+
+Example events:
+
+| Event           | Description                 |
+| --------------- | --------------------------- |
+| TG_APPROVED     | Telegram approval completed |
+| SLACK_APPROVED  | Slack approval completed    |
+| DEPOSIT_CREATED | Deposit record created      |
+
+This ensures **full traceability** of financial operations.
+
+---
+
+# API Example
+
+Slack approval endpoint:
+
+```
+POST /slack/webhook
+```
+
+Example request:
+
+```json
+{
+  "action": "approve",
+  "public_key": "document_public_key",
+  "actor": {
+    "username": "slack_approver",
+    "id": "U123456"
+  }
+}
+```
+
+Example response:
+
+```json
+{
+  "ok": true,
+  "status": "SLACK_APPROVED",
+  "deposit_id": "uuid"
+}
+```
+
+---
+
+# Project Structure
+
+```
+api
+ ├── routers
+ │   ├── auth.py
+ │   ├── telegram.py
+ │   └── slack.py
+ │
+ ├── services
+ │   ├── workflow.py
+ │   ├── fx.py
+ │   └── slack.py
+ │
+ ├── models
+ │   ├── document.py
+ │   └── deposit.py
+ │
+ ├── schemas
+ │   └── slack.py
+ │
+ └── main.py
+
+alembic/
+docker-compose.yml
+.env.example
+```
+
+---
+
+# Running the Project
+
+Clone the repository
+
+```
+git clone https://github.com/OzgurKaptann/receipt-approval-system.git
+cd receipt-approval-system
+```
+
+Create environment file
+
+```
+cp .env.example .env
+```
+
+Start containers
 
 ```
 docker compose up -d --build
 ```
 
-API will run at:
-
-```
-http://localhost:8000
-```
-
-Swagger documentation:
+Open API docs
 
 ```
 http://localhost:8000/docs
@@ -130,249 +208,63 @@ http://localhost:8000/docs
 
 ---
 
-### Environment Variables
+# 🇹🇷 Türkçe Açıklama
 
-See `.env.example` for configuration.
+Bu proje, banka havale veya EFT dekontlarının **çok aşamalı onay mekanizmasıyla işlenmesini sağlayan bir backoffice ödeme sistemi** simülasyonudur.
 
-Important variables:
+Gerçek finans operasyonlarında kullanılan süreçleri modellemek amacıyla geliştirilmiştir.
+
+---
+
+## Sistem Akışı
 
 ```
-DATABASE_URL
-JWT_SECRET
-TELEGRAM_BOT_TOKEN
-TELEGRAM_CHAT_ID
-```
-
----
-
-### Example Approval Flow
-
-1. Upload a bank receipt
-
-2. OCR parser extracts:
-
-   * sender name
-   * transfer amount
-   * transfer date
-
-3. Telegram approval message is sent
-
-4. Approval webhook updates document status
-
-5. Audit event is recorded
-
----
-
-### Project Status
-
-Sprint-1 Completed
-
-Implemented:
-
-* Document upload
-* OCR parsing (mock)
-* Telegram approval integration
-* Webhook callback processing
-* Audit event tracking
-* Dockerized backend
-
-Next planned features (Sprint-2):
-
-* Slack approval workflow
-* TRY → USD FX conversion
-* Deposit creation pipeline
-* CRM / trading system integration
-
----
-
-## 🇹🇷 Türkçe
-
-### Proje Hakkında
-
-Receipt Approval System, banka havale / EFT dekontlarını otomatik olarak işleyip bir onay sürecinden geçiren bir backend servisidir.
-
-Yüklenen dekontlar OCR ile analiz edilir ve Telegram üzerinden onay sürecine gönderilir. Onay sonrası sistem doküman durumunu günceller ve tüm işlemleri audit log olarak kaydeder.
-
-Bu proje aşağıdaki backend konularını göstermektedir:
-
-* API geliştirme
-* veritabanı modelleme
-* migration yönetimi
-* dış servis entegrasyonu
-* audit logging
-* docker tabanlı geliştirme ortamı
-
----
-
-### Sistem Akışı
-
 Dekont Yükleme
-→ OCR Analizi
-→ Telegram Onay Talebi
-→ Telegram Webhook
-→ Doküman Durumu Güncelleme
-→ Audit Log Kaydı
+      ↓
+OCR / Veri Ayrıştırma
+      ↓
+Telegram Onayı
+      ↓
+Slack Onayı
+      ↓
+Deposit Oluşturma
+      ↓
+Audit Log
+```
+
+Bu yapı sayesinde finans ekipleri **yanlış veya yetkisiz para yatırma işlemlerini önleyebilir.**
 
 ---
 
-### Özellikler
+# Tech Stack
 
-* JWT Authentication
-* Müşteri yönetimi
-* Dekont yükleme sistemi
-* OCR veri çıkarımı (mock)
-* Telegram bot entegrasyonu
-* Webhook callback mekanizması
-* Audit event takibi
-* Docker ile container mimarisi
+Backend
 
----
+* FastAPI
+* SQLAlchemy
+* PostgreSQL
+* Alembic
 
-### Mimari
-
-Backend Framework: **FastAPI**
-Veritabanı: **PostgreSQL**
-ORM: **SQLAlchemy**
-Migration aracı: **Alembic**
-Container: **Docker & Docker Compose**
-
----
-
-### API Endpointleri
-
-Authentication
-
-* `POST /auth/register`
-* `POST /auth/login`
-
-Customers
-
-* `POST /customers`
-* `GET /customers`
-
-Documents
-
-* `POST /documents/upload`
-
-Telegram
-
-* `POST /telegram/webhook`
-
-System
-
-* `GET /health`
-
----
-
-### Veritabanı Tabloları
-
-**uploaded_documents**
-
-Yüklenen dekont bilgilerini ve OCR ile çıkarılan verileri tutar.
-
-Örnek alanlar:
-
-* sender_name
-* amount_try
-* transfer_date
-* tg_chat_id
-* tg_message_id
-* status
-
----
-
-**audit_events**
-
-Sistemde gerçekleşen tüm işlemlerin geçmişini tutar.
-
-Örnek eventler:
-
-* DOCUMENT_UPLOADED
-* OCR_PARSED
-* TG_SENT
-* TG_APPROVED
-* TG_REJECTED
-
----
-
-### Projeyi Çalıştırma
-
-Gereksinimler
+Infrastructure
 
 * Docker
 * Docker Compose
 
-Servisleri başlatmak için:
+Integrations
 
-```
-docker compose up -d --build
-```
-
-API adresi:
-
-```
-http://localhost:8000
-```
-
-Swagger arayüzü:
-
-```
-http://localhost:8000/docs
-```
+* Telegram Bot API
+* Slack Webhooks
 
 ---
 
-### Ortam Değişkenleri
+# Future Improvements
 
-`.env.example` dosyasına bakınız.
+Planned enhancements:
 
-Önemli değişkenler:
+* Automatic FX rate integration
+* CRM / MetaTrader integration
+* Web dashboard for approvals
+* Background processing jobs
+* Reconciliation module
 
-```
-DATABASE_URL
-JWT_SECRET
-TELEGRAM_BOT_TOKEN
-TELEGRAM_CHAT_ID
-```
 
----
-
-### Örnek Onay Süreci
-
-1. Kullanıcı dekont yükler
-
-2. OCR servisinden şu bilgiler çıkarılır:
-
-   * gönderen kişi
-   * transfer tutarı
-   * transfer tarihi
-
-3. Telegram grubuna onay mesajı gönderilir
-
-4. Onay webhook üzerinden sisteme gelir
-
-5. Doküman durumu güncellenir
-
-6. Audit log kaydı oluşturulur
-
----
-
-### Proje Durumu
-
-Sprint-1 tamamlandı.
-
-Tamamlanan özellikler:
-
-✔ Dekont yükleme
-✔ OCR parsing (mock)
-✔ Telegram onay entegrasyonu
-✔ Webhook callback işleme
-✔ Audit log sistemi
-✔ Docker tabanlı backend
-
-Planlanan Sprint-2:
-
-* Slack onay mekanizması
-* TRY → USD dönüşüm servisi
-* Deposit oluşturma pipeline
-* CRM / trading sistemi entegrasyonu
