@@ -7,6 +7,7 @@ class Settings(BaseSettings):
 
     # REQUIRED (MVP boots with these)
     DATABASE_URL: str
+    REDIS_URL: str = Field(default="redis://redis:6379/0")
     JWT_SECRET: str = Field(default="dev_jwt_secret_change_me")
 
     # Runtime paths
@@ -20,6 +21,7 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: Optional[str] = None
     TELEGRAM_CHAT_ID: Optional[str] = None
     TELEGRAM_CB_SECRET: Optional[str] = None
+    TG_WEBHOOK_SECRET: Optional[str] = None
 
     # Slack (optional until you enable interactive flow)
     SLACK_BOT_TOKEN: Optional[str] = None
@@ -33,8 +35,14 @@ class Settings(BaseSettings):
     SMTP_PASS: Optional[str] = None
     SMTP_FROM: Optional[str] = None
 
-    # CRM/MT (optional - simulated if missing)
     CRM_MT_DEPOSIT_URL: Optional[str] = None
     CRM_MT_API_KEY: Optional[str] = None
+    CRM_WEBHOOK_URL: Optional[str] = None
+
+    # AWS configuration for S3 and Textract
+    AWS_ACCESS_KEY_ID: Optional[str] = None
+    AWS_SECRET_ACCESS_KEY: Optional[str] = None
+    AWS_REGION_NAME: str = Field(default="eu-central-1")
+    AWS_S3_BUCKET_NAME: str = Field(default="receipt-approval-bucket")
 
 settings = Settings()

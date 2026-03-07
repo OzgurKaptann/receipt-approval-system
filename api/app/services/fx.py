@@ -1,49 +1,41 @@
-from __future__ import annotations
+import logging
+from decimal import Decimal
+import httpx
 
-import os
-from decimal import Decimal, InvalidOperation
+from app.core.settings import settings
+
+logger = logging.getLogger(__name__)
 
 
-class FxConfigError(RuntimeError):
-    """Raised when FX configuration in the environment is invalid."""
-
-
-def get_try_to_usd_rate() -> Decimal:
+def get_usd_try_rate() -> Decimal:
     """
-    Returns the TRY→USD FX rate as a Decimal quantized to 6 decimal places.
-
-    Sprint-2 Step 2: only manual mode is supported.
-    - FX_MODE: "manual" (default if unset)
-    - FX_MANUAL_RATE: required when mode is manual, must be a positive decimal
+    Fetches the current USD/TRY exchange rate.
+    Uses a mock fallback if a real API (like TCMB or Fixer) is not configured or fails.
     """
-    mode = (os.getenv("FX_MODE") or "manual").strip().lower()
-
-    if mode != "manual":
-        raise FxConfigError(f"Unsupported FX_MODE={mode!r}; only 'manual' is supported.")
-
-    raw_rate = os.getenv("FX_MANUAL_RATE")
-    if not raw_rate:
-        raise FxConfigError("FX_MANUAL_RATE is required when FX_MODE=manual.")
-
+    # USD -> TRY fallback rate
+    fallback_rate = Decimal("35.00")
+    
     try:
-        rate = Decimal(raw_rate)
-    except (InvalidOperation, TypeError):
-        raise FxConfigError(f"FX_MANUAL_RATE={raw_rate!r} is not a valid decimal.") from None
+        # Example of calling a free public API for testing
+        with httpx.Client(timeout=5.0) as client:
+            response = client.get("https://api.exchangerate-api.com/v4/latest/USD")
+            if response.status_code == 200:
+                data = response.json()
+                return Decimal(str(data["rates"]["TRY"]))
+            
+        logger.info("External FX API failed, using fallback FX rate.")
+        return fallback_rate
+    except Exception as e:
+        logger.error(f"Failed to fetch real FX rate: {e}. Using fallback.")
+        return fallback_rate
 
+
+def convert_try_to_usd(amount_try: Decimal) -> Decimal:
+    """Converts a TRY amount to USD using the current rate."""
+    rate = get_usd_try_rate()
     if rate <= 0:
-        raise FxConfigError(f"FX_MANUAL_RATE must be positive, got {rate!r}.")
-
-    return rate.quantize(Decimal("0.000001"))
-
-
-if __name__ == "__main__":
-    """
-    Small self-check that can be run inside the container, e.g.:
-      FX_MODE=manual FX_MANUAL_RATE=0.032 docker compose exec api python -m app.services.fx
-    """
-    try:
-        rate = get_try_to_usd_rate()
-        print(f"TRY->USD rate: {rate}")
-    except FxConfigError as exc:
-        print(f"FX config error: {exc}")
-
+        raise ValueError("Invalid FX rate")
+    
+    amount_usd = amount_try / rate
+    # Return formatted to 2 decimal places
+    return Decimal(f"{amount_usd:.2f}")

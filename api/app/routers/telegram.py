@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -12,6 +12,7 @@ from app.models.audit_event import AuditEvent
 from app.models.document import UploadedDocument
 from app.models.enums import DocumentStatus
 from app.services.workflow import on_telegram_approved
+from app.core.settings import settings
 
 
 router = APIRouter(prefix="/telegram", tags=["telegram"])
@@ -34,7 +35,14 @@ class TgUpdate(BaseModel):
     callback_query: Optional[TgCallbackQuery] = None
 
 
-@router.post("/webhook")
+def verify_telegram_secret(x_telegram_bot_api_secret_token: Optional[str] = Header(None)):
+    if not settings.TG_WEBHOOK_SECRET:
+        return  # Mock/Dev mode bypass if secret not provided
+        
+    if not x_telegram_bot_api_secret_token or x_telegram_bot_api_secret_token != settings.TG_WEBHOOK_SECRET:
+        raise HTTPException(status_code=401, detail="Invalid Telegram secret token")
+
+@router.post("/webhook", dependencies=[Depends(verify_telegram_secret)])
 def telegram_webhook(payload: TgUpdate, db: Session = Depends(get_db)):
     """
     Telegram callback receiver (simülasyon).
@@ -57,6 +65,7 @@ def telegram_webhook(payload: TgUpdate, db: Session = Depends(get_db)):
     doc = (
         db.query(UploadedDocument)
         .filter(UploadedDocument.public_key == public_key)
+        .with_for_update(of=UploadedDocument)
         .first()
     )
     if not doc:

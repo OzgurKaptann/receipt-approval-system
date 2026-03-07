@@ -32,3 +32,32 @@ class DocumentUploadOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+class DashboardMetricsOut(BaseModel):
+    total_uploaded: int = 0
+    total_approved: int = 0
+    total_failed: int = 0
+    
+    total_try_volume: Decimal = Decimal("0.0")
+    total_usd_volume: Decimal = Decimal("0.0")
+    
+    success_rate: float = 0.0
+
+class DailyInvestmentOut(BaseModel):
+    date: str
+    amount_try: Decimal
+    amount_usd: Decimal
+    count: int
+
+class DocumentListOut(BaseModel):
+    items: list[DocumentUploadOut]
+    total: int
+
+class DocumentDetailOut(DocumentUploadOut):
+    ocr_raw_data: Optional[dict] = None
+    description: Optional[str] = None
+    
+    slack_channel_id: Optional[str] = None
+    slack_message_ts: Optional[str] = None
+    slack_decided_by: Optional[str] = None
+    slack_decided_at: Optional[datetime] = None

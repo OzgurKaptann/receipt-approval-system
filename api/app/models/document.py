@@ -3,7 +3,7 @@ from decimal import Decimal
 from datetime import datetime
 
 from sqlalchemy import String, DateTime, func, ForeignKey, Numeric, BigInteger, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -20,9 +20,10 @@ class UploadedDocument(Base):
     # OCR sonrası yazacağız => nullable olmalı
     receipt_amount_try: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
 
-    # OCR alanları (Sprint-1)
+    # OCR alanları (Sprint-1/2)
     sender_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     transfer_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ocr_raw_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     original_file_name: Mapped[str] = mapped_column(String(255), nullable=False)
     storage_file_name: Mapped[str] = mapped_column(String(255), nullable=False)
