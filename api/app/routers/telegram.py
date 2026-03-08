@@ -71,16 +71,21 @@ def telegram_webhook(payload: TgUpdate, db: Session = Depends(get_db)):
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
+    import logging
+    logger = logging.getLogger(__name__)
+
     if action == "approve":
-        # Do not override Slack terminal states on repeated callbacks.
-        if doc.status not in (
-            DocumentStatus.SLACK_PENDING.value,
-            DocumentStatus.SLACK_APPROVED.value,
-            DocumentStatus.SLACK_REJECTED.value,
-        ):
-            doc.status = DocumentStatus.TG_APPROVED.value
+        if doc.status not in (DocumentStatus.TG_PENDING.value, DocumentStatus.TG_APPROVED.value):
+            logger.info(f"Ignoring Telegram approve for {public_key}, current status: {doc.status}")
+            return {"ok": True, "status": doc.status, "public_key": public_key, "note": "Already processed"}
+            
+        doc.status = DocumentStatus.TG_APPROVED.value
         event_type = "TG_APPROVED"
     elif action == "reject":
+        if doc.status not in (DocumentStatus.TG_PENDING.value, DocumentStatus.TG_REJECTED.value):
+            logger.info(f"Ignoring Telegram reject for {public_key}, current status: {doc.status}")
+            return {"ok": True, "status": doc.status, "public_key": public_key, "note": "Already processed"}
+            
         doc.status = DocumentStatus.TG_REJECTED.value
         event_type = "TG_REJECTED"
     else:
@@ -106,9 +111,31 @@ def telegram_webhook(payload: TgUpdate, db: Session = Depends(get_db)):
 
     db.commit()
 
+    from app.services.telegram import edit_approval_message
+
     if action == "approve":
         on_telegram_approved(document_id=doc.id, db=db)
         # Reload the latest status after workflow side-effects (e.g. SLACK_PENDING).
         db.refresh(doc)
+        
+        new_text = (
+            "✅ Dekont onaylandı\n"
+            f"- Public Key: `{doc.public_key}`\n"
+            f"- Sender: {doc.sender_name}\n"
+            f"- Amount: {doc.receipt_amount_try} TRY"
+        )
+    else:
+        new_text = (
+            "❌ Dekont reddedildi\n"
+            f"- Public Key: `{doc.public_key}`\n"
+            f"- Sender: {doc.sender_name}"
+        )
+
+    if doc.tg_chat_id and doc.tg_message_id:
+        success = edit_approval_message(doc.tg_chat_id, doc.tg_message_id, new_text)
+        if success:
+            logger.info(f"Telegram message updated to {action.upper()} for {doc.public_key}")
+        else:
+            logger.warning(f"Failed to update Telegram message for {doc.public_key}")
 
     return {"ok": True, "status": doc.status, "public_key": public_key}

@@ -22,7 +22,7 @@ class DocumentUploadOut(BaseModel):
 
     # OCR parsed
     sender_name: Optional[str] = None
-    amount_try: Optional[Decimal] = Field(default=None, description="Parsed TRY amount")
+    amount_try: Optional[Decimal] = Field(default=None, validation_alias="receipt_amount_try", alias="receipt_amount_try", description="Parsed TRY amount")
     transfer_date: Optional[datetime] = None
 
     tg_chat_id: Optional[str] = None

@@ -13,6 +13,10 @@ class DocumentStatus(str, Enum):
     SLACK_REJECTED = "SLACK_REJECTED"
 
     APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+
+    OCR_FAILED = "OCR_FAILED"
+    DEPOSIT_FAILED = "DEPOSIT_FAILED"
 
 
 class DepositStatus(str, Enum):

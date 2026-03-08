@@ -27,11 +27,7 @@ def on_telegram_approved(document_id: UUID, db: Session) -> None:
     if not doc:
         return
 
-    if doc.status in (
-        DocumentStatus.SLACK_PENDING.value,
-        DocumentStatus.SLACK_APPROVED.value,
-        DocumentStatus.SLACK_REJECTED.value,
-    ):
+    if doc.status != DocumentStatus.TG_APPROVED.value:
         return
 
     doc.status = DocumentStatus.SLACK_PENDING.value
@@ -66,8 +62,12 @@ def on_slack_action(
     actor_id = actor.get("username") or actor.get("id") or "unknown"
     existing_dep = db.query(Deposit).filter(Deposit.document_id == doc.id).first()
 
+    import logging
+    logger = logging.getLogger(__name__)
+
     if action == "approve":
-        if doc.status in (DocumentStatus.SLACK_APPROVED.value, DocumentStatus.APPROVED.value):
+        if doc.status != DocumentStatus.SLACK_PENDING.value:
+            logger.info(f"Ignoring Slack approve for {public_key}, current status: {doc.status}")
             return doc, existing_dep
 
         doc.status = DocumentStatus.SLACK_APPROVED.value
@@ -90,7 +90,8 @@ def on_slack_action(
         return doc, existing_dep
 
     if action == "reject":
-        if doc.status in (DocumentStatus.SLACK_REJECTED.value, DocumentStatus.REJECTED.value):
+        if doc.status != DocumentStatus.SLACK_PENDING.value:
+            logger.info(f"Ignoring Slack reject for {public_key}, current status: {doc.status}")
             return doc, existing_dep
 
         doc.status = DocumentStatus.SLACK_REJECTED.value
@@ -183,4 +184,3 @@ def on_manual_action(
         return doc, existing_dep
 
     raise ValueError(f"Unknown action: {action!r}")
-

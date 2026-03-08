@@ -67,21 +67,58 @@ def send_approval_request(
         # Mock mode: behave as if Slack accepted the message.
         return "mock_channel", "mock_ts"
 
+    import logging
+    logger = logging.getLogger(__name__)
+    
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json; charset=utf-8",
     }
+    
+    blocks = [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": text,
+            }
+        },
+        {
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "Approve"},
+                    "style": "primary",
+                    "value": f"approve:{public_key}",
+                    "action_id": "approve_action"
+                },
+                {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "Reject"},
+                    "style": "danger",
+                    "value": f"reject:{public_key}",
+                    "action_id": "reject_action"
+                }
+            ]
+        }
+    ]
+
     payload = {
         "channel": channel,
         "text": text,
+        "blocks": blocks,
     }
 
     with httpx.Client(timeout=10.0) as client:
-        resp = client.post(SLACK_API_URL, json=payload)
+        resp = client.post(SLACK_API_URL, json=payload, headers=headers)
         data = resp.json()
 
     if not data.get("ok"):
+        logger.error(f"Slack API error (HTTP {resp.status_code}): {data}")
         raise RuntimeError(f"Slack API error: {data!r}")
+    else:
+        logger.info(f"Successfully dispatched Slack message to channel {channel} for document {public_key}")
 
     channel_id = str(data.get("channel"))
     message_ts = str(data.get("ts"))

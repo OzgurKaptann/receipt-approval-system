@@ -55,3 +55,24 @@ def send_approval_message(*, public_key: str, text: str) -> TelegramSendResult:
         message_id=str(msg.get("message_id")),
         error=None,
     )
+
+def edit_approval_message(chat_id: str, message_id: str, text: str) -> bool:
+    if not settings.TELEGRAM_BOT_TOKEN:
+        return False
+
+    url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/editMessageText"
+    payload = {
+        "chat_id": chat_id,
+        "message_id": message_id,
+        "text": text,
+        "reply_markup": {"inline_keyboard": []}, # remove buttons
+        "disable_web_page_preview": True,
+    }
+
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            r = client.post(url, json=payload)
+            data = r.json()
+            return data.get("ok", False)
+    except Exception:
+        return False

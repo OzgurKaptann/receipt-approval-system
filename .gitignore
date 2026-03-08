@@ -27,5 +27,17 @@ Thumbs.db
 # Generated artifacts
 openapi.json
 
+# Local storage / temp
 storage/
 .claude/
+
+# Local binaries / downloads
+*.exe
+*.zip
+ngrok*
+!docs/images/*.png
+!docs/evidence/*.png
+
+# Local test assets
+api/*.jpg
+api/test_*.py

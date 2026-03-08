@@ -14,4 +14,20 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  server: {
+    proxy: {
+      '/documents': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/slack': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/telegram': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      }
+    }
+  }
 })
