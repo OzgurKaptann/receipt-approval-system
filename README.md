@@ -387,3 +387,4 @@ Possible future extensions:
 - event streaming architecture (Kafka)
 - approval dashboard for operations teams
 - automated reconciliation module
+>>>>>>> 7c0193a (Update README)
